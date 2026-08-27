@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscripciones — tinta sobre papel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #fdfdfb;
+    color: #111;
+    font-family: 'Times New Roman', 'Times', serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { display: flex; position: relative; }
+
+  /* ----- Panel izquierdo ----- */
+  .panel-left {
+    flex: 1 1 50%;
+    background: #ffffff;
+    padding: 96px 104px 96px 104px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .meta-top {
+    position: absolute;
+    top: 34px;
+    left: 104px;
+    right: 104px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #b2b0a8;
+    font-style: italic;
+  }
+
+  .meta-top .title-mark {
+    color: #555;
+    font-style: normal;
+    letter-spacing: 0.18em;
+  }
+
+  textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    font-family: 'Times New Roman', 'Times', serif;
+    font-size: 19px;
+    line-height: 1.85;
+    color: #000;
+    letter-spacing: 0.003em;
+    caret-color: #000;
+    overflow-y: auto;
+  }
+
+  textarea::placeholder { color: #d4d2ca; font-style: italic; }
+  textarea::-webkit-scrollbar { width: 6px; }
+  textarea::-webkit-scrollbar-track { background: transparent; }
+  textarea::-webkit-scrollbar-thumb { background: #ececec; border-radius: 3px; }
+
+  .actions {
+    position: absolute;
+    bottom: 34px;
+    left: 104px;
+    right: 104px;
+    display: flex;
+    gap: 26px;
+    align-items: center;
+  }
+
+  .action-btn {
+    background: none;
+    border: none;
+    font-family: 'Times New Roman', serif;
+    font-size: 13px;
+    font-style: italic;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 0;
+    letter-spacing: 0.04em;
+    transition: color 0.3s ease;
+    position: relative;
+  }
+
+  .action-btn::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 1px;
+    background: #000;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(.2,.7,.2,1);
+  }
+
+  .action-btn:hover { color: #000; }
+  .action-btn:hover::after { transform: scaleX(1); }
+
+  /* ----- Divisor ----- */
+  .divider { width: 1px; background: #ececea; flex: 0 0 1px; }
+
+  /* ----- Panel derecho ----- */
+  .panel-right {
+    flex: 1 1 50%;
+    background: #fdfdfb;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    display: block;
+  }
+  
+  #canvasBg { z-index: 0; }
+  #canvasFg { z-index: 1; }
+
+  .canvas-meta {
+    position: absolute;
+    top: 34px;
+    right: 40px;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #b2b0a8;
+    font-style: italic;
+    text-align: right;
+    line-height: 1.7;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .canvas-meta .seed-val {
+    color: #555;
+    font-style: normal;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+  }
+
+  .canvas-meta .pulse {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #c9c7bf;
+    margin-left: 8px;
+    transform: translateY(-1px);
+    transition: background 0.4s ease;
+  }
+
+  .canvas-meta .pulse.active { background: #111; }
+
+  .frame-line { position: absolute; pointer-events: none; z-index: 2; }
+  .frame-line.t { top: 28px; left: 28px; right: 28px; height: 1px;
+    background: linear-gradient(to right, transparent, #e8e6df 20%, #e8e6df 80%, transparent); }
+  .frame-line.b { bottom: 28px; left: 28px; right: 28px; height: 1px;
+    background: linear-gradient(to right, transparent, #e8e6df 20%, #e8e6df 80%, transparent); }
+
+  .toast {
+    position: fixed;
+    bottom: 42px;
+    left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: #111;
+    color: #fff;
+    padding: 11px 22px;
+    border-radius: 1px;
+    font-size: 13px;
+    font-style: italic;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.45s cubic-bezier(.2,.7,.2,1);
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 900px) {
+    body { flex-direction: column; }
+    .panel-left { padding: 70px 36px 90px 36px; flex: 1 1 auto; height: 50vh; }
+    .panel-right { flex: 1 1 auto; height: 50vh; }
+    .meta-top { left: 36px; right: 36px; top: 22px; }
+    .actions { left: 36px; right: 36px; bottom: 22px; flex-wrap: wrap; gap: 16px; }
+    .canvas-meta { top: 22px; right: 22px; }
+    .divider { width: 100%; height: 1px; flex: 0 0 1px; }
+  }
+</style>
+</head>
+<body>
+  <div class="panel-left">
+    <div class="meta-top">
+      <span class="title-mark">Zen Sumie-E</span>
+      <span id="charCount">0 caracteres</span>
+    </div>
+    <textarea id="text" autofocus placeholder="Escribe algo y observa cómo la tinta negra cuenta una historia…"></textarea>
+    <div class="actions">
+      <button class="action-btn" id="btnSaveText">Guardar texto</button>
+      <button class="action-btn" id="btnSaveImage">Guardar pintura</button>
+      <button class="action-btn" id="btnClear">Lienzo nuevo</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="panel-right">
+    <div class="frame-line t"></div>
+    <div class="frame-line b"></div>
+    <canvas id="canvasBg"></canvas>
+    <canvas id="canvasFg"></canvas>
+    <div class="canvas-meta">
+      <div>semilla <span class="pulse" id="pulse"></span></div>
+      <div class="seed-val" id="seedVal">—</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Listo</div>
+
+<script>
+'use strict';
+
+/* ============================================================= */
+/*  UTILIDADES MATEMÁTICAS Y HASH                                 */
+/* ============================================================= */
+
+function hashText(text) {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) {
+    h = ((h << 5) + h) ^ text.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h || 1;
+}
+
+function mulberry32(seed) {
+  let s = (seed >>> 0) || 1;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+/* ============================================================= */
+/*  MOTOR DE PINTURA SUMI-E (TINTA CHINA)                         */
+/* ============================================================= */
+
+class InkPainter {
+  constructor(bgCanvas, fgCanvas) {
+    this.bgCanvas = bgCanvas;
+    this.fgCanvas = fgCanvas;
+    this.bgCtx = bgCanvas.getContext('2d');
+    this.fgCtx = fgCanvas.getContext('2d');
+    
+    this.bgCtx.lineCap = 'round';
+    this.bgCtx.lineJoin = 'round';
+    this.fgCtx.lineCap = 'round';
+    this.fgCtx.lineJoin = 'round';
+    
+    this.w = 0; this.h = 0; this.dpr = 1;
+    this.cursorX = 0; this.cursorY = 0;
+    this.lastTextLength = 0;
+    
+    this.inkColor = '15, 15, 15';     
+    this.canvasColor = '253, 253, 251'; 
+    this.sakuraColor = '230, 160, 170'; // Rosa pálido para Sakura
+    this.crimsonColor = '165, 35, 30';  // Bermellón intenso para Arce/Camelia
+    this.activeInk = this.inkColor;
+    
+    this.wetInks = [];
+    this.spiritBrush = { x: 0, y: 0, alpha: 0.015 };
+    
+    this.clusterAngle = 0;
+    this.clusterScale = 40;
+    
+    // Repertorio de motivos Sumi-e estándar (negros/blancos)
+    this.motifs = [
+      this.drawOrchid.bind(this),
+      this.drawBamboo.bind(this),
+      this.drawPlumBranch.bind(this),
+      this.drawPineNeedles.bind(this),
+      this.drawWinterPine.bind(this),
+      this.drawGrassTufts.bind(this),
+      this.drawRockOutline.bind(this)
+    ];
+    
+    // Repertorio de motivos raros (coloridos)
+    this.rareMotifs = [
+      this.drawSakura.bind(this),
+      this.drawRedLeaf.bind(this)
+    ];
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const rect = this.fgCanvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = dpr;
+    this.w = rect.width;
+    this.h = rect.height;
+    
+    [this.bgCanvas, this.fgCanvas].forEach(c => {
+      c.width = Math.max(1, Math.round(rect.width * dpr));
+      c.height = Math.max(1, Math.round(rect.height * dpr));
+    });
+    this.bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.fgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    
+    this.bgCtx.lineCap = 'round';
+    this.bgCtx.lineJoin = 'round';
+    this.fgCtx.lineCap = 'round';
+    this.fgCtx.lineJoin = 'round';
+    
+    this.spiritBrush.x = this.w * 0.5;
+    this.spiritBrush.y = this.h * 0.5;
+  }
+
+  clearCanvas() {
+    this.bgCtx.fillStyle = '#fdfdfb';
+    this.bgCtx.fillRect(0, 0, this.w, this.h);
+    this.fgCtx.clearRect(0, 0, this.w, this.h);
+    this.wetInks = [];
+    this.cursorX = this.w * 0.5;
+    this.cursorY = this.h * 0.5;
+    this.lastTextLength = 0;
+    this.clusterAngle = 0;
+    this.clusterScale = 40;
+  }
+
+  drawTaperedStroke(ctx, x1, y1, cx, cy, x2, y2, maxW, ink) {
+    ctx.strokeStyle = `rgba(${this.activeInk}, ${ink})`;
+    const steps = 30;
+    let prevX = x1, prevY = y1;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const it = 1 - t;
+      const x = it * it * x1 + 2 * it * t * cx + t * t * x2;
+      const y = it * it * y1 + 2 * it * t * cy + t * t * y2;
+      const w = Math.sin(t * Math.PI) * maxW;
+      ctx.lineWidth = Math.max(0.5, w);
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      prevX = x; prevY = y;
+    }
+  }
+
+  /* --- Distribución Espacial (Vuelo de Lévy y Sesgo de Bordes) --- */
+  getBiasedPosition(rand) {
+    const margin = 60;
+    let x, y;
+    if (rand() < 0.4) {
+      const side = Math.floor(rand() * 4);
+      const range = 180;
+      if (side === 0) { x = margin + rand() * range; y = margin + rand() * (this.h - 2*margin); }
+      else if (side === 1) { x = this.w - margin - rand() * range; y = margin + rand() * (this.h - 2*margin); }
+      else if (side === 2) { x = margin + rand() * (this.w - 2*margin); y = margin + rand() * range; }
+      else { x = margin + rand() * (this.w - 2*margin); y = this.h - margin - rand() * range; }
+    } else {
+      x = margin + rand() * (this.w - 2*margin);
+      y = margin + rand() * (this.h - 2*margin);
+      if (Math.abs(x - this.w/2) < 100 && Math.abs(y - this.h/2) < 100) {
+        x = rand() < 0.5 ? margin + 80 : this.w - margin - 80;
+      }
+    }
+    return { x, y };
+  }
+
+  /* --- Motivos Clásicos Sumi-e --- */
+
+  drawOrchid(x, y, angle, scale, ink) {
+    const branches = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < branches; i++) {
+      const a = angle + (Math.random() - 0.5) * 1.2;
+      const len = scale * (0.7 + Math.random() * 0.6);
+      const ex = x + Math.cos(a) * len;
+      const ey = y + Math.sin(a) * len;
+      const cx = x + Math.cos(a + 0.3) * len * 0.5;
+      const cy = y + Math.sin(a + 0.3) * len * 0.5;
+      this.drawTaperedStroke(this.bgCtx, x, y, cx, cy, ex, ey, 6 * scale / 50, ink * (0.6 + Math.random() * 0.4));
+      this.addWetInk(cx, cy, 15 * scale / 50, ink);
+    }
+  }
+
+  drawBamboo(x, y, angle, scale, ink) {
+    const segs = 2 + Math.floor(Math.random() * 3);
+    let currX = x, currY = y;
+    const segLen = (30 + Math.random() * 30) * scale / 50;
+    for (let i = 0; i < segs; i++) {
+      const ex = currX + Math.cos(angle) * segLen;
+      const ey = currY + Math.sin(angle) * segLen;
+      this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink * 0.9})`;
+      this.bgCtx.lineWidth = 8 * scale / 50;
+      this.bgCtx.beginPath();
+      this.bgCtx.moveTo(currX, currY);
+      this.bgCtx.lineTo(ex, ey);
+      this.bgCtx.stroke();
+      
+      const jA = angle + Math.PI / 2;
+      this.bgCtx.lineWidth = 2 * scale / 50;
+      this.bgCtx.beginPath();
+      this.bgCtx.moveTo(ex - Math.cos(jA) * 5 * scale / 50, ey - Math.sin(jA) * 5 * scale / 50);
+      this.bgCtx.lineTo(ex + Math.cos(jA) * 5 * scale / 50, ey + Math.sin(jA) * 5 * scale / 50);
+      this.bgCtx.stroke();
+      
+      if (Math.random() > 0.3) {
+        const lA = angle + (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.5);
+        const lLen = (40 + Math.random() * 30) * scale / 50;
+        const lcx = ex + Math.cos(lA) * lLen * 0.5;
+        const lcy = ey + Math.sin(lA) * lLen * 0.5;
+        const lex = ex + Math.cos(lA) * lLen;
+        const ley = ey + Math.sin(lA) * lLen;
+        this.drawTaperedStroke(this.bgCtx, ex, ey, lcx, lcy, lex, ley, 4 * scale / 50, ink * 0.8);
+      }
+      this.addWetInk((currX + ex) / 2, (currY + ey) / 2, 10 * scale / 50, ink);
+      currX = ex; currY = ey;
+    }
+  }
+
+  drawPlumBranch(x, y, angle, scale, ink) {
+    let currX = x, currY = y, currA = angle;
+    const segs = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < segs; i++) {
+      currA += (Math.random() - 0.5) * 0.8;
+      const segLen = (25 + Math.random() * 20) * scale / 50;
+      const ex = currX + Math.cos(currA) * segLen;
+      const ey = currY + Math.sin(currA) * segLen;
+      this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink})`;
+      this.bgCtx.lineWidth = (6 - i) * scale / 50;
+      this.bgCtx.beginPath();
+      this.bgCtx.moveTo(currX, currY);
+      this.bgCtx.lineTo(ex, ey);
+      this.bgCtx.stroke();
+      
+      if (Math.random() > 0.4) {
+        const fInk = ink * 0.6;
+        this.bgCtx.fillStyle = `rgba(${this.activeInk}, ${fInk})`;
+        const fA = currA + (Math.random() - 0.5);
+        const fDist = 5 * scale / 50;
+        for (let p = 0; p < 5; p++) {
+          const pa = fA + p * (Math.PI * 2 / 5);
+          const px = ex + Math.cos(pa) * fDist;
+          const py = ey + Math.sin(pa) * fDist;
+          this.bgCtx.beginPath();
+          this.bgCtx.arc(px, py, 2.5 * scale / 50, 0, Math.PI * 2);
+          this.bgCtx.fill();
+        }
+      }
+      this.addWetInk(ex, ey, 8 * scale / 50, ink);
+      currX = ex; currY = ey;
+    }
+  }
+
+  drawPineNeedles(x, y, angle, scale, ink) {
+    const clusters = 1 + Math.floor(Math.random() * 2);
+    for (let c = 0; c < clusters; c++) {
+      const cx = x + Math.cos(angle + c * 0.5) * 10 * scale / 50;
+      const cy = y + Math.sin(angle + c * 0.5) * 10 * scale / 50;
+      const numNeedles = 5 + Math.floor(Math.random() * 5);
+      this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink})`;
+      this.bgCtx.lineWidth = 1.5 * scale / 50;
+      
+      for (let i = 0; i < numNeedles; i++) {
+        const a = angle + (i / numNeedles - 0.5) * 1.4 + (Math.random() - 0.5) * 0.2;
+        const len = (30 + Math.random() * 20) * scale / 50;
+        const ex = cx + Math.cos(a) * len;
+        const ey = cy + Math.sin(a) * len;
+        this.bgCtx.beginPath();
+        this.bgCtx.moveTo(cx, cy);
+        this.bgCtx.lineTo(ex, ey);
+        this.bgCtx.stroke();
+      }
+      this.addWetInk(cx, cy, 5 * scale / 50, ink);
+    }
+  }
+
+  drawWinterPine(x, y, angle, scale, ink) {
+    let currX = x, currY = y, currA = angle;
+    const segs = 2 + Math.floor(Math.random() * 2);
+    const segLen = (20 + Math.random() * 15) * scale / 50;
+    const segments = [];
+    
+    for (let i = 0; i < segs; i++) {
+      currA += (Math.random() - 0.5) * 0.6;
+      const ex = currX + Math.cos(currA) * segLen;
+      const ey = currY + Math.sin(currA) * segLen;
+      segments.push({ x1: currX, y1: currY, x2: ex, y2: ey, a: currA });
+      currX = ex; currY = ey;
+    }
+    
+    this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink})`;
+    this.bgCtx.lineWidth = 3 * scale / 50;
+    this.bgCtx.beginPath();
+    this.bgCtx.moveTo(x, y);
+    this.bgCtx.lineTo(currX, currY);
+    this.bgCtx.stroke();
+    
+    for (let s = 0; s < segments.length; s++) {
+      const seg = segments[s];
+      const px = (seg.x1 + seg.x2) / 2;
+      const py = (seg.y1 + seg.y2) / 2;
+      const needleAngle = seg.a - Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+      const numNeedles = 3 + Math.floor(Math.random() * 4);
+      
+      this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink * 0.8})`;
+      this.bgCtx.lineWidth = 1.5 * scale / 50;
+      
+      for (let j = 0; j < numNeedles; j++) {
+        const a = needleAngle + (j / numNeedles - 0.5) * 0.8 + (Math.random() - 0.5) * 0.2;
+        const len = (15 + Math.random() * 15) * scale / 50;
+        const ex = px + Math.cos(a) * len;
+        const ey = py + Math.sin(a) * len;
+        this.bgCtx.beginPath();
+        this.bgCtx.moveTo(px, py);
+        this.bgCtx.lineTo(ex, ey);
+        this.bgCtx.stroke();
+      }
+      
+      if (this.activeInk === this.inkColor) {
+        this.bgCtx.fillStyle = `rgba(${this.canvasColor}, ${ink * 0.7})`;
+        const snowX = px + Math.cos(needleAngle) * 4;
+        const snowY = py + Math.sin(needleAngle) * 4;
+        this.bgCtx.beginPath();
+        this.bgCtx.arc(snowX, snowY, 2.5 * scale / 50, 0, Math.PI * 2);
+        this.bgCtx.fill();
+      }
+    }
+    this.addWetInk(currX, currY, 8 * scale / 50, ink);
+  }
+
+  drawGrassTufts(x, y, angle, scale, ink) {
+    const numBlades = 4 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < numBlades; i++) {
+      const a = angle + (i - numBlades / 2) * 0.25 + (Math.random() - 0.5) * 0.2;
+      const len = scale * (0.6 + Math.random() * 0.6);
+      const ex = x + Math.cos(a) * len;
+      const ey = y + Math.sin(a) * len;
+      const cx = x + Math.cos(a + 0.4) * len * 0.5;
+      const cy = y + Math.sin(a + 0.4) * len * 0.5;
+      this.drawTaperedStroke(this.bgCtx, x, y, cx, cy, ex, ey, 3 * scale / 50, ink * (0.7 + Math.random() * 0.3));
+    }
+    this.addWetInk(x, y, 5 * scale / 50, ink);
+  }
+
+  drawRockOutline(x, y, angle, scale, ink) {
+    this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink})`;
+    this.bgCtx.lineWidth = 4 * scale / 50;
+    this.bgCtx.beginPath();
+    let currX = x, currY = y, currA = angle;
+    const segs = 4 + Math.floor(Math.random() * 3);
+    
+    for (let i = 0; i < segs; i++) {
+      currA += (Math.random() - 0.5) * 1.2;
+      const segLen = (15 + Math.random() * 15) * scale / 50;
+      const ex = currX + Math.cos(currA) * segLen;
+      const ey = currY + Math.sin(currA) * segLen;
+      this.bgCtx.lineTo(ex, ey);
+      currX = ex; currY = ey;
+    }
+    this.bgCtx.stroke();
+    this.addWetInk(x + (currX - x)*0.5, y + (currY - y)*0.5, 10 * scale / 50, ink);
+  }
+
+  drawMountain(x, y, angle, scale, ink) {
+    const peakH = (80 + Math.random() * 60) * scale / 50;
+    const baseW = (150 + Math.random() * 100) * scale / 50;
+    this.bgCtx.strokeStyle = `rgba(${this.activeInk}, ${ink * 0.8})`;
+    this.bgCtx.lineWidth = 4 * scale / 50;
+    
+    this.bgCtx.beginPath();
+    this.bgCtx.moveTo(x, y);
+    this.bgCtx.quadraticCurveTo(x + baseW * 0.2, y - peakH * 0.4, x + baseW * 0.4, y - peakH);
+    this.bgCtx.stroke();
+    
+    this.bgCtx.beginPath();
+    this.bgCtx.moveTo(x + baseW * 0.4, y - peakH);
+    this.bgCtx.quadraticCurveTo(x + baseW * 0.7, y - peakH * 0.3, x + baseW, y);
+    this.bgCtx.stroke();
+    
+    this.addWetInk(x + baseW * 0.4, y - peakH * 0.7, 20 * scale / 50, ink * 0.5);
+  }
+
+  drawSplat(x, y, size, ink) {
+    this.bgCtx.fillStyle = `rgba(${this.activeInk}, ${ink})`;
+    this.bgCtx.beginPath();
+    const verts = 8 + Math.floor(Math.random() * 5);
+    for (let i = 0; i <= verts; i++) {
+      const a = (i / verts) * Math.PI * 2;
+      const r = size * (0.7 + Math.random() * 0.5);
+      const px = x + Math.cos(a) * r;
+      const py = y + Math.sin(a) * r;
+      if (i === 0) this.bgCtx.moveTo(px, py); else this.bgCtx.lineTo(px, py);
+    }
+    this.bgCtx.closePath();
+    this.bgCtx.fill();
+    
+    const drops = 4 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < drops; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const dist = size * (1.5 + Math.random() * 2.5);
+      const px = x + Math.cos(a) * dist;
+      const py = y + Math.sin(a) * dist;
+      this.bgCtx.beginPath();
+      this.bgCtx.arc(px, py, 1 + Math.random() * 3, 0, Math.PI * 2);
+      this.bgCtx.fill();
+    }
+    this.addWetInk(x, y, size * 1.5, ink);
+  }
+
+  drawMist(x, y, size, ink) {
+    const grad = this.bgCtx.createRadialGradient(x, y, 0, x, y, size);
+    grad.addColorStop(0, `rgba(${this.activeInk}, ${ink * 0.05})`);
+    grad.addColorStop(1, `rgba(${this.activeInk}, 0)`);
+    this.bgCtx.fillStyle = grad;
+    this.bgCtx.fillRect(x - size, y - size, size * 2, size * 2);
+  }
+
+  /* --- Nuevos Motivos Raros (Acentos de Color) --- */
+  
+  drawSakura(x, y, angle, scale, ink) {
+    const r = (12 + Math.random() * 8) * scale / 50;
+    const petals = 5;
+    
+    // Pétalos suaves
+    this.bgCtx.fillStyle = `rgba(${this.sakuraColor}, ${ink * 0.8})`;
+    for(let i=0; i<petals; i++) {
+      const a = angle + i * (Math.PI * 2 / petals);
+      const px = x + Math.cos(a) * r * 0.6;
+      const py = y + Math.sin(a) * r * 0.6;
+      this.bgCtx.beginPath();
+      this.bgCtx.ellipse(px, py, r*0.7, r*0.4, a, 0, Math.PI * 2);
+      this.bgCtx.fill();
+    }
+    
+    // Centro y estambres en rojo intenso
+    this.bgCtx.fillStyle = `rgba(${this.crimsonColor}, ${ink})`;
+    this.bgCtx.beginPath();
+    this.bgCtx.arc(x, y, r * 0.2, 0, Math.PI * 2);
+    this.bgCtx.fill();
+    
+    this.bgCtx.strokeStyle = `rgba(${this.crimsonColor}, ${ink * 0.8})`;
+    this.bgCtx.lineWidth = 1 * scale / 50;
+    for(let i=0; i<5; i++) {
+      const a = angle + i * (Math.PI * 2 / 5) + Math.PI/5;
+      this.bgCtx.beginPath();
+      this.bgCtx.moveTo(x, y);
+      this.bgCtx.lineTo(x + Math.cos(a)*r*0.5, y + Math.sin(a)*r*0.5);
+      this.bgCtx.stroke();
+    }
+    
+    this.addWetInk(x, y, r * 1.2, ink);
+  }
+
+  drawRedLeaf(x, y, angle, scale, ink) {
+    const numBlades = 5;
+    const len = scale * 0.8;
+    this.bgCtx.fillStyle = `rgba(${this.crimsonColor}, ${ink})`;
+    
+    // Dibuja una hoja de arce/camelia con 5 lóbulos puntiagudos usando curvas
+    for (let i = 0; i < numBlades; i++) {
+      const a = angle + (i - numBlades/2) * 0.7 + (Math.random()-0.5)*0.2;
+      const ex = x + Math.cos(a) * len;
+      const ey = y + Math.sin(a) * len;
+      const cx = x + Math.cos(a + 0.2) * len * 0.5;
+      const cy = y + Math.sin(a + 0.2) * len * 0.5;
+      
+      this.bgCtx.beginPath();
+      const w = 4 * scale / 50;
+      const perpA = a + Math.PI/2;
+      this.bgCtx.moveTo(x, y);
+      this.bgCtx.quadraticCurveTo(cx + Math.cos(perpA)*w, cy + Math.sin(perpA)*w, ex, ey);
+      this.bgCtx.quadraticCurveTo(cx - Math.cos(perpA)*w, cy - Math.sin(perpA)*w, x, y);
+      this.bgCtx.closePath();
+      this.bgCtx.fill();
+    }
+    this.addWetInk(x, y, len * 0.5, ink);
+  }
+
+  addWetInk(x, y, r, alpha) {
+    this.wetInks.push({ x, y, r: r * 0.5, maxR: r * 2, alpha: alpha * 0.2, decay: 0.01, color: this.activeInk });
+  }
+
+  /* --- Procesado del Texto con Agrupamiento (Clusters) --- */
+  processText(text) {
+    if (text.length <= this.lastTextLength) {
+      this.lastTextLength = text.length;
+      return;
+    }
+
+    const newChars = text.substring(this.lastTextLength);
+    const fullHash = hashText(text);
+    const rand = mulberry32(fullHash);
+    
+    for (let i = 0; i < newChars.length; i++) {
+      const char = newChars[i];
+      const ink = 0.4 + (rand() * 0.6);
+      
+      const isPunct = /[.,;:!?]/.test(char);
+      const isSpace = char === ' ';
+      const isUpper = !isSpace && !isPunct && char === char.toUpperCase() && char !== char.toLowerCase();
+      
+      // 2.5% de probabilidad de generar un acento de color raro (Sakura o Hoja Roja)
+      const isRareAccent = !isSpace && !isPunct && rand() < 0.025;
+      
+      if (isRareAccent) {
+        const accentType = rand();
+        if (accentType < 0.5) {
+          this.activeInk = this.sakuraColor;
+          this.drawSakura(this.cursorX, this.cursorY, this.clusterAngle + (rand()-0.5)*0.8, this.clusterScale * (0.8 + rand() * 0.4), ink);
+        } else {
+          this.activeInk = this.crimsonColor;
+          this.drawRedLeaf(this.cursorX, this.cursorY, this.clusterAngle + (rand()-0.5)*0.8, this.clusterScale * (0.8 + rand() * 0.4), ink);
+        }
+      } else {
+        // Flujo estándar: Tinta negra o blanca (nieve)
+        const isSnow = rand() < 0.18;
+        this.activeInk = isSnow ? this.canvasColor : this.inkColor;
+        
+        if (isSpace) {
+          this.drawMist(this.cursorX, this.cursorY, 80 + rand() * 60, ink);
+        } else if (isPunct) {
+          this.drawSplat(this.cursorX, this.cursorY, 10 + rand() * 20, ink);
+        } else if (isUpper) {
+          this.drawMountain(this.cursorX, this.cursorY, this.clusterAngle, this.clusterScale * 1.5, ink * 0.7);
+        } else if (/[aeiouáéíóú]/i.test(char)) {
+          const motif = this.motifs[Math.floor(rand() * this.motifs.length)];
+          motif(this.cursorX, this.cursorY, this.clusterAngle + (rand()-0.5)*0.8, this.clusterScale, ink);
+        } else if (/[bcdfghjklmnñpqrstvwxyz0-9]/i.test(char)) {
+          const motif = this.motifs[Math.floor(rand() * this.motifs.length)];
+          motif(this.cursorX, this.cursorY, this.clusterAngle + (rand()-0.5)*0.8, this.clusterScale, ink);
+        }
+      }
+      
+      // Movimiento del cursor
+      const shouldJump = isPunct ? true : (isSpace ? rand() < 0.4 : rand() < 0.08);
+      
+      if (shouldJump) {
+        const pos = this.getBiasedPosition(rand);
+        this.cursorX = pos.x;
+        this.cursorY = pos.y;
+        
+        this.clusterAngle = (rand() - 0.3) * Math.PI * 1.2;
+        this.clusterScale = 30 + rand() * 30;
+      } else {
+        this.cursorX += (rand() - 0.35) * 30; 
+        this.cursorY += (rand() - 0.5) * 30;
+        
+        this.clusterAngle += (rand() - 0.5) * 0.2;
+        this.clusterScale += (rand() - 0.5) * 5;
+        this.clusterScale = Math.max(20, Math.min(80, this.clusterScale));
+        
+        this.cursorX = Math.max(40, Math.min(this.w - 40, this.cursorX));
+        this.cursorY = Math.max(40, Math.min(this.h - 40, this.cursorY));
+      }
+    }
+    this.lastTextLength = text.length;
+  }
+
+  /* --- Veta del Dragón --- */
+  updateSpiritBrush() {
+    const dx = this.cursorX - this.spiritBrush.x;
+    const dy = this.cursorY - this.spiritBrush.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    const speed = Math.min(0.04, 0.005 + dist * 0.0001);
+    this.spiritBrush.x += dx * speed;
+    this.spiritBrush.y += dy * speed;
+    
+    if (dist > 10) {
+      this.bgCtx.strokeStyle = `rgba(${this.inkColor}, ${this.spiritBrush.alpha})`;
+      this.bgCtx.lineWidth = 1.0;
+      this.bgCtx.beginPath();
+      this.bgCtx.moveTo(this.spiritBrush.x, this.spiritBrush.y);
+      const cx = this.spiritBrush.x + dx * 0.1 + (Math.random() - 0.5) * 8;
+      const cy = this.spiritBrush.y + dy * 0.1 + (Math.random() - 0.5) * 8;
+      this.bgCtx.lineTo(cx, cy);
+      this.bgCtx.stroke();
+      this.spiritBrush.x = cx;
+      this.spiritBrush.y = cy;
+    }
+  }
+
+  drawWetInks() {
+    this.fgCtx.clearRect(0, 0, this.w, this.h);
+    for (let i = this.wetInks.length - 1; i >= 0; i--) {
+      const w = this.wetInks[i];
+      w.r = lerp(w.r, w.maxR, 0.05);
+      w.alpha -= w.decay;
+      if (w.alpha <= 0) {
+        this.wetInks.splice(i, 1);
+        continue;
+      }
+      const grad = this.fgCtx.createRadialGradient(w.x, w.y, 0, w.x, w.y, w.r);
+      grad.addColorStop(0, `rgba(${w.color}, ${w.alpha})`);
+      grad.addColorStop(1, `rgba(${w.color}, 0)`);
+      this.fgCtx.fillStyle = grad;
+      this.fgCtx.beginPath();
+      this.fgCtx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+      this.fgCtx.fill();
+    }
+  }
+
+  render() {
+    this.updateSpiritBrush();
+    this.drawWetInks();
+  }
+}
+
+/* ============================================================= */
+/*  UI Y CONTROL                                                  */
+/* ============================================================= */
+
+const canvasBg = document.getElementById('canvasBg');
+const canvasFg = document.getElementById('canvasFg');
+const textArea = document.getElementById('text');
+const charCount = document.getElementById('charCount');
+const seedVal   = document.getElementById('seedVal');
+const pulse     = document.getElementById('pulse');
+const toast     = document.getElementById('toast');
+
+const painter = new InkPainter(canvasBg, canvasFg);
+painter.clearCanvas();
+
+let processTimer = null;
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function flashPulse() {
+  pulse.classList.add('active');
+  clearTimeout(flashPulse._t);
+  flashPulse._t = setTimeout(() => pulse.classList.remove('active'), 400);
+}
+
+function handleInput() {
+  const text = textArea.value;
+  const n = text.length;
+  charCount.textContent = n + ' ' + (n === 1 ? 'carácter' : 'caracteres');
+
+  const seed = hashText(text || 'empty');
+  seedVal.textContent = text.length === 0 ? '—' : seed.toString(16).toUpperCase().padStart(8, '0');
+
+  clearTimeout(processTimer);
+  processTimer = setTimeout(() => {
+    painter.processText(text);
+    flashPulse();
+  }, 50);
+}
+
+textArea.addEventListener('input', handleInput);
+
+textArea.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 's') { e.preventDefault(); doSaveText(); }
+    else if (e.key === 'j') { e.preventDefault(); doSaveImage(); }
+  }
+});
+
+function doSaveText() {
+  const text = textArea.value;
+  if (!text.trim()) { showToast('No hay texto para guardar'); return; }
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'inscripcion_' + (hashText(text)).toString(16) + '.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Texto guardado');
+}
+
+function doSaveImage() {
+  if (!textArea.value.trim()) { showToast('El lienzo está vacío'); return; }
+  const temp = document.createElement('canvas');
+  temp.width = canvasBg.width;
+  temp.height = canvasBg.height;
+  const tc = temp.getContext('2d');
+  tc.fillStyle = '#fdfdfb';
+  tc.fillRect(0, 0, temp.width, temp.height);
+  tc.drawImage(canvasBg, 0, 0);
+  const url = temp.toDataURL('image/jpeg', 0.95);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pintura_' + (hashText(textArea.value)).toString(16) + '.jpg';
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast('Pintura guardada');
+}
+
+document.getElementById('btnSaveText').addEventListener('click', doSaveText);
+document.getElementById('btnSaveImage').addEventListener('click', doSaveImage);
+document.getElementById('btnClear').addEventListener('click', () => {
+  textArea.value = '';
+  painter.clearCanvas();
+  handleInput();
+  textArea.focus();
+});
+
+textArea.focus();
+
+(function loop() {
+  try { painter.render(); }
+  catch (err) { console.error('Render error:', err); }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
